@@ -1,0 +1,571 @@
+
+while true do
+if game.Players.LocalPlayer.Character then
+break
+end
+
+task.wait(0.1)
+end
+
+print("Loaded")
+
+local ID = workspace:FindFirstChild("RogueThing") or Instance.new("StringValue")
+ID.Name = "RogueThing"
+ID.Parent = workspace
+ID.Value = game:GetService("HttpService"):GenerateGUID(false)
+
+MYID = ID.Value
+
+local Variables = {
+	HoldingTab = false,
+	Snarving = false,
+	BlockRunning = false,
+	ActiveMacro = false,
+	GrappleShadow = 0,
+	DownAerial = 0,
+	LethTdt = 0,
+	CanParry = false,
+	ToggleUI = true,
+}
+
+local Player = game.Players.LocalPlayer
+local Character = Player.Character
+local Humanoid = Character:WaitForChild("Humanoid")
+local Root= Character:WaitForChild("HumanoidRootPart")
+local Boosts = Character:WaitForChild("Boosts")
+
+local DefaultSpeed: number = 2.7
+local RunSpeed = 2.5
+local MyBuff
+
+local Velocities = {
+LastShadow = 0,	
+}
+
+if not Character:GetAttribute("HasSpeed") then
+	local SpeedBoost = Instance.new("NumberValue")
+	SpeedBoost.Name = "SpeedBoost"
+	SpeedBoost.Value = DefaultSpeed
+	SpeedBoost.Parent = Character.Boosts
+SpeedBoost:SetAttribute("MyBuff", true)
+MyBuff = SpeedBoost
+end
+
+for i, v in pairs(Character.Boosts:children()) do
+if v:GetAttribute("MyBuff") then
+MyBuff = v
+break
+end
+end
+
+MyBuff.Value = DefaultSpeed
+Character:SetAttribute("HasSpeed", true)
+
+local ManaRemote
+local remotesFolder = Character:WaitForChild("CharacterHandler"):WaitForChild("Remotes")
+
+local safeRemote = nil
+
+local dummy = Instance.new("RemoteEvent")
+local rawFireServer
+
+local success, err = pcall(function()
+	rawFireServer = hookfunction(dummy.FireServer, function(self, ...)
+		local numArgs = select("#", ...)
+
+		if self:IsDescendantOf(remotesFolder) then
+			if numArgs == 1 and not safeRemote and self.Name:find("-") and game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.G) and not game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.Q) then
+				safeRemote = self
+				ManaRemote = self
+				warn("✅ SAFE remote found:", self:GetFullName())
+			end
+		end
+
+		return rawFireServer(self, ...)
+	end)
+end)
+
+if not success or not rawFireServer then
+	error("❌ hookfunction failed: " .. tostring(err))
+end
+
+function Click()
+	local VirtualInput = game:GetService('VirtualInputManager')
+
+	VirtualInput:SendMouseButtonEvent(0,0,0, true, game, 1)
+	VirtualInput:SendMouseButtonEvent(0,0,0, false, game, 1)
+
+	function getNil(name,class) for _,v in next, getnilinstances() do if v.ClassName==class and v.Name==name then return v;end end end
+
+	local args = {
+		[1] = getNil("InputObject", "InputObject"),
+		[2] = Player:GetMouse().Hit.lookVector
+	}
+
+	game:GetService("Players").LocalPlayer.Character.CharacterHandler.Remotes.LeftClick:FireServer(unpack(args))
+end
+
+function Click2()
+	local VirtualInput = game:GetService('VirtualInputManager')
+
+	task.spawn(function()
+		VirtualInput:SendMouseButtonEvent(0,0,1, true, game, 1)
+		VirtualInput:SendMouseButtonEvent(0,0,1, false, game, 1)
+	end)
+end
+
+function Unequip()
+if ID and ID.Value ~= MYID then return end
+
+	Humanoid:UnequipTools()
+end
+
+function EquipTool(ToolName)
+if ID and ID.Value ~= MYID then return end
+
+	local Surge = Player.Backpack:FindFirstChild(ToolName)
+
+	if Surge then
+		Humanoid:EquipTool(Surge)
+	end
+
+	if Surge then
+		Surge:AddTag("Self")
+
+		task.delay(0.1, function()
+			Surge:RemoveTag("Self")
+		end)
+	end
+end
+
+task.spawn(function()
+while task.wait() do
+if ID.Value ~= MYID then
+		break
+	end
+
+if Character:FindFirstChild("Charge") then
+MyBuff.Value = DefaultSpeed + 8
+Character:SetAttribute("ChargeBuff", true)
+elseif Character:GetAttribute("ChargeBuff") then
+MyBuff.Value = DefaultSpeed
+Character:SetAttribute("ChargeBuff", false)
+end
+end
+end)
+
+local LastGrapple = 0
+local LastM1 = 0
+
+Humanoid.AnimationPlayed:Connect(function(Track)
+	if ID.Value ~= MYID then
+		return
+	end
+
+if Track.Animation.AnimationId == "rbxassetid://3110530226" then
+LastGrapple = tick()
+end
+
+if Track.Animation.AnimationId == "rbxassetid://2604521704" then
+MyBuff.Value = RunSpeed
+
+
+while true do
+local Found = false
+
+for i,v in pairs(Humanoid:GetPlayingAnimationTracks()) do
+if v.Animation.AnimationId == Track.Animation.AnimationId then
+Found = true
+break
+end
+end
+
+if not Found then
+break
+end
+
+task.wait()
+end
+
+MyBuff.Value = DefaultSpeed
+end
+
+end)
+
+function BufferAction()
+if tick() - LastM1 < 0.05 then
+repeat task.wait() until tick() - LastM1 > 0.05
+end
+end
+
+function ShadowGrapple()
+BufferAction()
+
+	EquipTool("Grapple")
+	Click()
+
+	task.wait()
+
+	local Active = true
+
+	task.spawn(function()
+		while Active do
+			Click()
+			task.wait()
+		end
+	end)
+
+local Vels = {}
+
+local Event = Root.ChildAdded:Connect(function(Velocity)
+task.wait()
+
+if not Velocity:IsA("BodyVelocity") then return end
+
+print(Velocity.Velocity.Magnitude)
+
+if math.abs(Velocity.Velocity.Magnitude - 103) < 3 and tick() - LastGrapple < 1 then
+local NewVel = Velocity:Clone()
+Velocity:Destroy()
+NewVel.Velocity = Vector3.new(0, 70, 0)
+NewVel.Parent = Root
+
+task.delay(0.3, function()
+NewVel.Velocity = Vector3.new(0, 25, 0) + Root.CFrame.lookVector*10
+end)
+
+task.delay(0.9, NewVel.Destroy, NewVel)
+
+table.insert(Vels, NewVel)
+end
+
+if math.abs(Velocity.Velocity.Magnitude - 160) < 3 then
+for i,v in Vels do if v and v.Parent then v:Destroy() end end
+
+print("Hi")
+
+local NewVel = Velocity:Clone()
+Velocity:Destroy()
+NewVel.Velocity = Root.CFrame.lookVector*100 - Vector3.new(0, 120, 0)
+NewVel.Parent = Root
+
+task.spawn(function()
+while NewVel and NewVel.Parent do
+local Part = workspace:FindPartOnRayWithIgnoreList(Ray.new(Root.Position, Vector3.new(0, -3, 0)), {workspace.Live})
+
+if Part and Humanoid.FloorMaterial ~= Enum.Material.Air then
+NewVel:Destroy()
+break
+end
+
+task.wait()
+end
+end)
+
+task.delay(0.4, NewVel.Destroy, NewVel)
+end
+end)
+
+task.delay(1.5, Event.Disconnect, Event)
+
+local Event = Character.ChildAdded:Connect(function(Added)
+task.wait()
+
+if Added.Name == "Snarvindur" then
+Click2()
+end
+
+if Added.Name == "Shadowrush" then
+Click()
+end
+if Added.Name == "Owl Slash" then
+for i = 1, 10 do
+Click()
+task.wait()
+end
+end
+end)
+
+task.delay(1.5, Event.Disconnect, Event)
+
+	EquipTool("Shadowrush")
+	Click()
+
+	task.wait(0.05)
+
+Unequip()
+
+	Active = false
+end
+
+game:GetService("UserInputService").InputBegan:Connect(function(Key, Typing)
+	if Typing then
+		return
+	end
+
+	if ID.Value ~= MYID then
+		return
+	end
+
+	local VirtualInput = game:GetService('VirtualInputManager')
+
+if Key.UserInputType == Enum.UserInputType.MouseButton1 then
+if Character:FindFirstChild("Dagger") then LastM1 = tick() end
+end
+
+if Key.KeyCode == Enum.KeyCode.C then
+		ShadowGrapple()
+	end
+
+	if Key.KeyCode == Enum.KeyCode.W then
+		LastW = tick()
+	end
+
+	if Key.KeyCode == Enum.KeyCode.Q then
+		MyBuff.Value = DefaultSpeed
+	end
+
+	if Key.KeyCode == Enum.KeyCode.X then
+		local Vel = Root:FindFirstChild("ForwardVelocity")
+
+		if Vel and math.abs(Vel.Velocity.Magnitude - 90) < 3 then
+			Vel.Name = "BodyVelocity"
+			local Old = Vel.MaxForce
+			local Old2 = Vel.P
+			Vel.MaxForce = Vector3.new(10000, 50000, 1000)
+
+			local Rand = 1000
+
+			Vel.Velocity += Vector3.new(0, Rand, 0)
+			Vel.P = 150000
+
+			workspace.CurrentCamera.CFrame *= CFrame.Angles(0, math.rad(90), 0)
+
+			task.wait(0.05)
+			Vel.Velocity -= Vector3.new(0, Rand, 0)
+
+			Vel.P= Old2
+			Vel.Name = "ForwardVelocity"
+			Vel.MaxForce = Old
+		end
+	end
+
+	if Key.KeyCode == Enum.KeyCode.G then
+		if not ManaRemote then
+			return
+		end
+
+		repeat
+			local Args = true
+			if game.PlaceId == 5208655184 then
+				Args =  {
+					[1] = 7,
+					[2] = 0.5,
+				}
+			end
+
+			ManaRemote:FireServer(
+				Args
+			)
+			task.wait()
+		until not game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.G)
+
+		MyBuff.Value = DefaultSpeed
+		ManaRemote:FireServer(false)
+	end
+
+	if Key.KeyCode == Enum.KeyCode.F then
+		repeat 
+			if game:GetService("CollectionService"):HasTag(Character, "Knocked") and game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.G) then
+				task.wait()
+				continue
+			end
+
+			if not game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.F) then
+				break
+			end
+
+			local args = {
+				[1] = false
+			}
+
+			game:GetService("Players").LocalPlayer.Character.CharacterHandler.Remotes.Block:FireServer(unpack(args))
+			task.wait()
+		until not game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.F)
+
+		function getNil(name,class) for _,v in next, getnilinstances() do if v.ClassName==class and v.Name==name then return v;end end end
+
+		local args = {
+			[1] = getNil("InputObject", "InputObject")
+		}
+
+		game:GetService("Players").LocalPlayer.Character.CharacterHandler.Remotes.Unblock:FireServer(unpack(args))
+	end 
+end)
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
+
+local FOV_RADIUS = 250 -- pixels
+local FALLBACK_RADIUS = 15 -- studs
+local MAX_TARGET_DISTANCE = 50 -- studs
+local Map = {}
+
+-- Build a list of world geometry to raycast against (not Live/Thrown/characters)
+for _, v in pairs(workspace:GetDescendants()) do
+	if v:IsDescendantOf(workspace.Live) then
+		continue
+	end
+	if v:IsDescendantOf(workspace.Thrown) then
+		continue
+	end
+	if v:IsA("BasePart") and v.CanCollide and v.Transparency < 1 then
+		table.insert(Map, v)
+	end
+end
+
+-- RaycastParams that only INCLUDE the "Map" (so players/characters are ignored)
+local RayParams = RaycastParams.new()
+RayParams.FilterType = Enum.RaycastFilterType.Include
+RayParams.FilterDescendantsInstances = Map
+RayParams.IgnoreWater = true
+
+local function GetLocalRoot()
+	local char = LocalPlayer.Character
+	if not char then return nil end
+	return char:FindFirstChild("HumanoidRootPart")
+end
+
+local function IsOnScreen(worldPos)
+	local _, onScreen = Camera:WorldToViewportPoint(worldPos)
+	return onScreen
+end
+
+local function IsVisibleFromCamera(targetPos)
+	-- Raycast from camera to targetPos against Map only
+	local origin = Camera.CFrame.Position
+	local direction = targetPos - origin
+	local result = workspace:Raycast(origin, direction, RayParams)
+	if not result then
+		-- nothing in the way
+		return true
+	end
+	-- If something hit, check whether the hit point is at (or beyond) the target
+	-- If the obstruction distance is less than distance to target, it's blocked.
+	local obstructionDistance = (result.Position - origin).Magnitude
+	local targetDistance = direction.Magnitude
+	return obstructionDistance >= targetDistance - 0.05
+end
+
+task.wait(5)
+
+game.ReplicatedStorage.Requests.GetMouse.OnClientInvoke = function(v145)
+	if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.X) or Character:FindFirstChild("Ignis") then
+		return {
+			Hit = Mouse.Hit,
+			Target = Mouse.Target,
+			UnitRay = Mouse.UnitRay,
+			X = Mouse.X,
+			Y = Mouse.Y
+		}
+	end
+
+	local closestPlayer
+	local shortestDistance = math.huge
+	local targetPart
+	local mousePos = Vector2.new(Mouse.X, Mouse.Y)
+
+	-- Step 1: Search for player within mouse FOV
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Character then
+			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				if (hrp.Position - Root.Position).Magnitude > MAX_TARGET_DISTANCE then
+					continue
+				end
+
+				if player.Character:FindFirstChild("Grabbed") then continue end
+
+				local screenPos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+				if onScreen then
+					local screenDistance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+					if screenDistance < FOV_RADIUS and screenDistance < shortestDistance then
+						shortestDistance = screenDistance
+						closestPlayer = player
+						targetPart = hrp
+					end
+				end
+			end
+		end
+	end
+
+	-- Step 2: If no FOV target found, check for proximity fallback
+	if not targetPart then
+		shortestDistance = math.huge
+
+		for _, player in ipairs(Players:GetPlayers()) do
+			if player ~= LocalPlayer and player.Character then
+				local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+
+if player.Character:FindFirstChild("Grabbed") then continue end
+
+				if hrp then
+					local dist = (hrp.Position - Root.Position).Magnitude
+					if dist < FALLBACK_RADIUS and dist < shortestDistance then
+						shortestDistance = dist
+						closestPlayer = player
+						targetPart = hrp
+					end
+				end
+			end
+		end
+	end
+
+	-- Step 3: Return original mouse data if nothing found
+	if not targetPart then
+		return {
+			Hit = Mouse.Hit,
+			Target = Mouse.Target,
+			UnitRay = Mouse.UnitRay,
+			X = Mouse.X,
+			Y = Mouse.Y
+		}
+	end
+
+	-- EXTRA: ensure targetPart is on screen before proceeding (final check)
+	if not IsOnScreen(targetPart.Position) then
+		return {
+			Hit = Mouse.Hit,
+			Target = Mouse.Target,
+			UnitRay = Mouse.UnitRay,
+			X = Mouse.X,
+			Y = Mouse.Y
+		}
+	end
+
+	-- VISIBILITY CHECK: don't aim through walls. If blocked, return normal mouse values.
+	if not IsVisibleFromCamera(targetPart.Position) then
+		return {
+			Hit = Mouse.Hit,
+			Target = Mouse.Target,
+			UnitRay = Mouse.UnitRay,
+			X = Mouse.X,
+			Y = Mouse.Y
+		}
+	end
+
+	-- Step 4: Return data pointing at the target
+	local origin = Camera.CFrame.Position
+	local dirUnit = (targetPart.Position - origin).Unit
+	local direction = dirUnit * 500 -- keep your range
+
+	return {
+		Hit = CFrame.new(targetPart.Position),
+		Target = targetPart,
+		UnitRay = Ray.new(origin, direction),
+		X = Mouse.X,
+		Y = Mouse.Y
+	}
+end
